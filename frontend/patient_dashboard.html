@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocBook | Patient Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f0f4f8;
+            min-height: 100vh;
+        }
+
+        /* Navbar */
+        nav {
+            background: #1a73e8;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        nav h1 { color: white; font-size: 1.4rem; }
+
+        nav span { color: rgba(255,255,255,0.85); font-size: 0.9rem; }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            background: rgba(255,255,255,0.2);
+            padding: 0.4rem 1rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            margin-left: 1rem;
+        }
+
+        nav a:hover { background: rgba(255,255,255,0.3); }
+
+        /* Layout */
+        .container {
+            max-width: 1100px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+        }
+
+        .card h2 {
+            font-size: 1.1rem;
+            color: #333;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        /* Doctor list */
+        .doctor-item {
+            padding: 0.75rem;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .doctor-item:hover { border-color: #1a73e8; background: #f8f9ff; }
+        .doctor-item.selected { border-color: #1a73e8; background: #e8f0fe; }
+
+        .doctor-item h3 { font-size: 0.95rem; color: #333; }
+        .doctor-item p { font-size: 0.8rem; color: #888; margin-top: 0.2rem; }
+
+        /* Slots */
+        .slots-container { margin-top: 1rem; display: none; }
+        .slots-container.visible { display: block; }
+
+        .slot-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .slot-btn {
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: white;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .slot-btn:hover { border-color: #1a73e8; background: #e8f0fe; }
+        .slot-btn.selected { border-color: #1a73e8; background: #1a73e8; color: white; }
+
+        /* Form elements */
+        textarea {
+            width: 100%;
+            padding: 0.7rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            resize: none;
+            outline: none;
+            margin-bottom: 0.75rem;
+        }
+
+        textarea:focus { border-color: #1a73e8; }
+
+        .btn {
+            width: 100%;
+            padding: 0.75rem;
+            background: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn:hover { background: #1558b0; }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
+
+        /* Appointments */
+        .appointment-item {
+            padding: 0.75rem;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+        }
+
+        .appointment-item h3 { font-size: 0.95rem; color: #333; }
+        .appointment-item p { font-size: 0.82rem; color: #777; margin-top: 0.2rem; }
+
+        .status {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-top: 0.4rem;
+        }
+
+        .status.confirmed { background: #e6f4ea; color: #2e7d32; }
+        .status.cancelled { background: #fdecea; color: #c62828; }
+        .status.pending { background: #fff8e1; color: #f57f17; }
+
+        .cancel-btn {
+            margin-top: 0.5rem;
+            padding: 0.35rem 0.75rem;
+            background: white;
+            color: #e53935;
+            border: 1px solid #e53935;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .cancel-btn:hover { background: #fdecea; }
+
+        .empty { color: #aaa; font-size: 0.9rem; text-align: center; padding: 1rem 0; }
+
+        /* Hidden input */
+        #selected-slot-input { display: none; }
+    </style>
+</head>
+<body>
+
+<nav>
+    <h1>DocBook</h1>
+    <div>
+        <span>👤 {{ user_name }}</span>
+        <a href="/logout">Logout</a>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="grid">
+
+        <!-- Book Appointment -->
+        <div class="card">
+            <h2>Book an Appointment</h2>
+
+            {% for doctor, user in doctors %}
+            <div class="doctor-item" onclick="selectDoctor({{ doctor.id }}, this)">
+                <h3>Dr. {{ user.name }}</h3>
+                <p>{{ doctor.specialization }}</p>
+            </div>
+            {% endfor %}
+
+            {% if not doctors %}
+            <p class="empty">No doctors available</p>
+            {% endif %}
+
+            <!-- Slots -->
+            <div class="slots-container" id="slots-container">
+                <h3 style="font-size:0.9rem; color:#555; margin-bottom:0.5rem;">Available Slots</h3>
+                <div class="slot-grid" id="slot-grid"></div>
+
+                <form method="POST" action="/patient/book" id="book-form">
+                    <input type="hidden" name="availability_id" id="selected-slot-input" />
+                    <textarea name="notes" placeholder="Notes (optional)" rows="2"></textarea>
+                    <button type="submit" class="btn" id="book-btn" disabled>Book Appointment</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- My Appointments -->
+        <div class="card">
+            <h2>My Appointments</h2>
+
+            {% for appointment, slot, doctor, user in appointments %}
+            {% if appointment.status != 'cancelled' %}
+            <div class="appointment-item">
+                <h3>Dr. {{ user.name }}</h3>
+                <p>{{ doctor.specialization }}</p>
+                <p>📅 {{ slot.date }} | 🕐 {{ slot.start_time.strftime('%H:%M') }} - {{ slot.end_time.strftime('%H:%M') }}</p>
+                {% if appointment.notes %}
+                <p>📝 {{ appointment.notes }}</p>
+                {% endif %}
+                <span class="status {{ appointment.status }}">{{ appointment.status }}</span>
+                <br>
+                <form method="POST" action="/patient/cancel/{{ appointment.id }}" style="display:inline">
+                    <button type="submit" class="cancel-btn">Cancel</button>
+                </form>
+            </div>
+            {% endif %}
+            {% endfor %}
+
+            {% if not appointments %}
+            <p class="empty">No appointments yet</p>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+
+<script>
+    let selectedSlotId = null;
+
+    async function selectDoctor(doctorId, el) {
+        document.querySelectorAll('.doctor-item').forEach(d => d.classList.remove('selected'));
+        el.classList.add('selected');
+
+        const res = await fetch(`/patient/slots/${doctorId}`);
+        const slots = await res.json();
+
+        const grid = document.getElementById('slot-grid');
+        grid.innerHTML = '';
+        selectedSlotId = null;
+        document.getElementById('book-btn').disabled = true;
+        document.getElementById('selected-slot-input').value = '';
+
+        if (slots.length === 0) {
+            grid.innerHTML = '<p style="color:#aaa; font-size:0.85rem;">No available slots</p>';
+        } else {
+            slots.forEach(slot => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'slot-btn';
+                btn.textContent = `${slot.date} ${slot.start_time.slice(0,5)}`;
+                btn.onclick = () => selectSlot(slot.id, btn);
+                grid.appendChild(btn);
+            });
+        }
+
+        document.getElementById('slots-container').classList.add('visible');
+    }
+
+    function selectSlot(slotId, btn) {
+        document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        selectedSlotId = slotId;
+        document.getElementById('selected-slot-input').value = slotId;
+        document.getElementById('book-btn').disabled = false;
+    }
+</script>
+
+</body>
+</html>

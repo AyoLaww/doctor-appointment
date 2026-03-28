@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocBook | Doctor Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f0f4f8;
+            min-height: 100vh;
+        }
+
+        nav {
+            background: #1a73e8;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        nav h1 { color: white; font-size: 1.4rem; }
+        nav span { color: rgba(255,255,255,0.85); font-size: 0.9rem; }
+        nav a {
+            color: white;
+            text-decoration: none;
+            background: rgba(255,255,255,0.2);
+            padding: 0.4rem 1rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            margin-left: 1rem;
+        }
+        nav a:hover { background: rgba(255,255,255,0.3); }
+
+        .container {
+            max-width: 1100px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+        }
+
+        .card h2 {
+            font-size: 1.1rem;
+            color: #333;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        /* Form */
+        .form-group { margin-bottom: 1rem; }
+
+        label {
+            display: block;
+            margin-bottom: 0.4rem;
+            font-size: 0.875rem;
+            color: #333;
+            font-weight: 500;
+        }
+
+        input {
+            width: 100%;
+            padding: 0.7rem 1rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border 0.2s;
+        }
+
+        input:focus { border-color: #1a73e8; }
+
+        .btn {
+            width: 100%;
+            padding: 0.75rem;
+            background: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn:hover { background: #1558b0; }
+
+        /* Slot items */
+        .slot-item {
+            padding: 0.75rem;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .slot-item p { font-size: 0.88rem; color: #444; }
+        .slot-item span { font-size: 0.75rem; }
+
+        .booked-badge {
+            background: #e8f0fe;
+            color: #1a73e8;
+            padding: 0.2rem 0.6rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .available-badge {
+            background: #e6f4ea;
+            color: #2e7d32;
+            padding: 0.2rem 0.6rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .delete-btn {
+            padding: 0.3rem 0.7rem;
+            background: white;
+            color: #e53935;
+            border: 1px solid #e53935;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .delete-btn:hover { background: #fdecea; }
+
+        /* Appointment items */
+        .appointment-item {
+            padding: 0.75rem;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+        }
+
+        .appointment-item h3 { font-size: 0.95rem; color: #333; }
+        .appointment-item p { font-size: 0.82rem; color: #777; margin-top: 0.25rem; }
+
+        .empty { color: #aaa; font-size: 0.9rem; text-align: center; padding: 1rem 0; }
+    </style>
+</head>
+<body>
+
+<nav>
+    <h1>DocBook</h1>
+    <div>
+        <span>🩺 Dr. {{ user_name }}</span>
+        <a href="/logout">Logout</a>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="grid">
+
+        <!-- Manage Availability -->
+        <div class="card">
+            <h2>Manage Availability</h2>
+
+            <!-- Add slot form -->
+            <form method="POST" action="/doctor/availability/add">
+                <div class="form-group">
+                    <label>Date</label>
+                    <input type="date" name="date" required />
+                </div>
+                <div class="form-group">
+                    <label>Start Time</label>
+                    <input type="time" name="start_time" required />
+                </div>
+                <div class="form-group">
+                    <label>End Time</label>
+                    <input type="time" name="end_time" required />
+                </div>
+                <button type="submit" class="btn">Add Slot</button>
+            </form>
+
+            <!-- Existing slots -->
+            <div style="margin-top: 1.5rem;">
+                <h3 style="font-size:0.9rem; color:#555; margin-bottom:0.75rem;">Your Slots</h3>
+
+                {% for slot in availability %}
+                <div class="slot-item">
+                    <div>
+                        <p>📅 {{ slot.date }} | 🕐 {{ slot.start_time.strftime('%H:%M') }} - {{ slot.end_time.strftime('%H:%M') }}</p>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                        {% if slot.is_booked %}
+                        <span class="booked-badge">Booked</span>
+                        {% else %}
+                        <span class="available-badge">Available</span>
+                        <form method="POST" action="/doctor/availability/delete/{{ slot.id }}">
+                            <button type="submit" class="delete-btn">Delete</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+
+                {% if not availability %}
+                <p class="empty">No slots added yet</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Upcoming Appointments -->
+        <div class="card">
+            <h2>Upcoming Appointments</h2>
+
+            {% for appointment, slot, patient_user in appointments %}
+            <div class="appointment-item">
+                <h3>{{ patient_user.name }}</h3>
+                <p>📅 {{ slot.date }} | 🕐 {{ slot.start_time.strftime('%H:%M') }} - {{ slot.end_time.strftime('%H:%M') }}</p>
+                {% if appointment.notes %}
+                <p>📝 {{ appointment.notes }}</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+
+            {% if not appointments %}
+            <p class="empty">No upcoming appointments</p>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+
+</body>
+</html>
