@@ -1,9 +1,8 @@
-from flask import Blueprint, render_template, session, redirect, url_for, request, jsonify
+from flask import Blueprint, render_template, session, redirect, url_for, request, jsonify, flash
 from models import db, Appointment, Availability, Doctor, User
 
 patient = Blueprint('patient', __name__)
 
-# Protect route - only patients can access
 def patient_required(f):
     from functools import wraps
     @wraps(f)
@@ -16,14 +15,10 @@ def patient_required(f):
     return decorated
 
 
-# Patient dashboard
 @patient.route('/patient/dashboard')
 @patient_required
 def dashboard():
-    # Get all doctors
     doctors = db.session.query(Doctor, User).join(User).all()
-
-    # Get patient's appointments
     appointments = db.session.query(Appointment, Availability, Doctor, User)\
         .join(Availability, Appointment.availability_id == Availability.id)\
         .join(Doctor, Availability.doctor_id == Doctor.id)\
@@ -37,15 +32,10 @@ def dashboard():
                            user_name=session['user_name'])
 
 
-# Get available slots for a doctor
 @patient.route('/patient/slots/<int:doctor_id>')
 @patient_required
 def get_slots(doctor_id):
-    slots = Availability.query.filter_by(
-        doctor_id=doctor_id,
-        is_booked=False
-    ).all()
-
+    slots = Availability.query.filter_by(doctor_id=doctor_id, is_booked=False).all()
     return jsonify([{
         'id': slot.id,
         'date': str(slot.date),
@@ -54,52 +44,53 @@ def get_slots(doctor_id):
     } for slot in slots])
 
 
-# Book an appointment
 @patient.route('/patient/book', methods=['POST'])
 @patient_required
 def book():
-    availability_id = request.form['availability_id']
-    notes = request.form.get('notes', '')
+    availability_id = request.form.get('availability_id')
+    notes = request.form.get('notes', '').strip()
 
-    # Check slot is still available
-    slot = Availability.query.get(availability_id)
-    if not slot or slot.is_booked:
+    if not availability_id:
+        flash('Please select a time slot.', 'error')
         return redirect(url_for('patient.dashboard'))
 
-    # Create appointment
+    slot = Availability.query.get(availability_id)
+
+    if not slot:
+        flash('This slot does not exist.', 'error')
+        return redirect(url_for('patient.dashboard'))
+
+    if slot.is_booked:
+        flash('This slot has just been booked by someone else. Please choose another.', 'error')
+        return redirect(url_for('patient.dashboard'))
+
     appointment = Appointment(
         patient_id=session['user_id'],
         availability_id=availability_id,
         notes=notes,
         status='confirmed'
     )
-
-    # Mark slot as booked
     slot.is_booked = True
-
     db.session.add(appointment)
     db.session.commit()
-
+    flash('Appointment booked successfully!', 'success')
     return redirect(url_for('patient.dashboard'))
 
 
-# Cancel an appointment
 @patient.route('/patient/cancel/<int:appointment_id>', methods=['POST'])
 @patient_required
 def cancel(appointment_id):
     appointment = Appointment.query.get(appointment_id)
 
-    # Make sure this appointment belongs to the logged in patient
     if not appointment or appointment.patient_id != session['user_id']:
+        flash('Appointment not found.', 'error')
         return redirect(url_for('patient.dashboard'))
 
-    # Free up the slot
     slot = Availability.query.get(appointment.availability_id)
     if slot:
         slot.is_booked = False
 
-    # Cancel the appointment
     appointment.status = 'cancelled'
     db.session.commit()
-
+    flash('Appointment cancelled successfully.', 'success')
     return redirect(url_for('patient.dashboard'))
